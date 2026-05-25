@@ -13,3 +13,5 @@ install(TARGETS OpenGL_CPP
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 add_subdirectory(01_Create_Window)
+
+add_subdirectory(02_Create_Triangle)
