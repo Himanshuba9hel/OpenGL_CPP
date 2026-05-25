@@ -15,3 +15,4 @@ install(TARGETS OpenGL_CPP
 add_subdirectory(01_Create_Window)
 
 add_subdirectory(02_Create_Triangle)
+add_subdirectory(03_SetUp_GLEW)
