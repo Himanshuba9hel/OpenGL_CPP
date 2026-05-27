@@ -5,7 +5,10 @@ project(OpenGL_CPP LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(OpenGL_CPP main.cpp)
+add_executable(OpenGL_CPP
+    main.cpp
+    Setup.md
+)
 
 include(GNUInstallDirs)
 install(TARGETS OpenGL_CPP
@@ -13,6 +16,5 @@ install(TARGETS OpenGL_CPP
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 add_subdirectory(01_Create_Window)
-
 add_subdirectory(02_Create_Triangle)
 add_subdirectory(03_SetUp_GLEW)
