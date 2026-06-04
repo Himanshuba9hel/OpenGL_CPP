@@ -18,3 +18,6 @@ install(TARGETS OpenGL_CPP
 add_subdirectory(01_Create_Window)
 add_subdirectory(02_Create_Triangle)
 add_subdirectory(03_SetUp_GLEW)
+add_subdirectory(04_Vertex_Buffers_N_Drawing_Triangle)
+add_subdirectory(05_Vertex_Attributes_N_Layouts)
+add_subdirectory(06_Shader)
