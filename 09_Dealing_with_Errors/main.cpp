@@ -5,6 +5,68 @@
 #include <sstream>
 #include <string>
 
+/*===================== ERROR Handling Start =====================*/
+
+// #define ASSERT(x) if (!(x)) __debugbreak(); // For Microsoft's Visual C++ (MSVC) compiler
+
+// #define ASSERT(x) if (!(x)) __builtin_trap(); // For GCC/Clang Built-in
+
+/*------------ To Find Error with Assert -------------*/
+#include <csignal>
+#define ASSERT(x) if (!(x)) raise(SIGTRAP);  // For POSIX Standard (Most Portable)
+
+// Without Parameter
+#define GLCall(x) GLClearError();\
+    x;\
+    ASSERT(GLLogCall())
+
+// With Parameter
+#define GLCallPara(x) GLClearError();\
+    x;\
+    ASSERT(GLLogCall(#x, __FILE__, __LINE__))
+
+static bool GLLogCall(const char* function, const char* file, int line)
+{
+    while (GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << "): "<< function <<
+            " " << file << ":" << line << std::endl;
+        return false;
+    }
+    return true;
+}
+
+/*------------ To Find Error with Assert Call Start -------------*/
+
+static bool GLLogCall()
+{
+    while (GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+/*------------- To Find Error with Assert Call End --------------*/
+
+/*--------------------- To Find Error Start ---------------------*/
+static void GLClearError()
+{
+    while (glGetError() != GL_NO_ERROR);
+}
+
+static void GLCheckError()
+{
+    while (GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
+    }
+}
+/*---------------------- To Find Error End ----------------------*/
+
+/*====================== ERROR Handling End =====================*/
+
 struct ShaderProgramSource
 {
     std::string VertexSourse;
@@ -125,59 +187,12 @@ int main(void)
 
     std::cout << glGetString(GL_VERSION) << std::endl;
 
-    /**************** Draw Square By Two Triangle Two Example ****************/
-
-    /*--------- Example 1 By Inefficient Vertices Start -----------*/
-
-    // float positions[] = {
-    //     -0.5f, -0.5f,
-    //      0.5f, -0.5f,
-    //      0.5f,  0.5f,
-
-    //      0.5f,  0.5f,
-    //     -0.5f,  0.5f,
-    //     -0.5f, -0.5f,
-    // };
-
-    // unsigned int buffer;
-    // glGenBuffers(1,&buffer);
-    // glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    // glBufferData(GL_ARRAY_BUFFER, 6*2 * sizeof(float), positions, GL_STATIC_DRAW);
-
-    // glEnableVertexAttribArray(0);
-    // glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float)*2, 0);
-
-
-    // ShaderProgramSource source = ParseShader("../../../08_Index_Buffers/res/shaders/Basic.shader");
-    // unsigned int shader = CreateShader(source.VertexSourse,source.FragementSource);
-    // glUseProgram(shader);
-
-    // /*  Loop until user clones the window   */
-    // while (!glfwWindowShouldClose(window))
-    // {
-    //     /*   Render here   */
-    //     glClear(GL_COLOR_BUFFER_BIT);
-
-    //     glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    //     /*   Swap front and back buffer    */
-    //     glfwSwapBuffers(window);
-
-    //     /*   Pull for and process events    */
-    //     glfwPollEvents();
-    // }
-
-    /*---------- Example 1 By Inefficient Vertices End ------------*/
-
-
-    /*----------- Example 2 By Efficient Vertices Start -----------*/
-
-    float positions[] = {
-        -0.5f, -0.5f, // 0
-         0.5f, -0.5f, // 1
-         0.5f,  0.5f, // 2
-        -0.5f,  0.5f, // 3
-    };
+        float positions[] = {
+            -0.5f, -0.5f, // 0
+            0.5f, -0.5f, // 1
+            0.5f,  0.5f, // 2
+            -0.5f,  0.5f, // 3
+        };
 
     unsigned int indices[] = {
         0, 1, 2,
@@ -197,8 +212,11 @@ int main(void)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
 
-    ShaderProgramSource source = ParseShader("../../../08_Index_Buffers/res/shaders/Basic.shader");
+    ShaderProgramSource source = ParseShader("../../../09_Dealing_with_Errors/res/shaders/Basic.shader");
     unsigned int shader = CreateShader(source.VertexSourse,source.FragementSource);
+
+    /*  Example of Find Error with Assert with Parameter throught assignment operator */
+    // GLCallPara(unsigned int shader = CreateShader(source.VertexSourse,source.FragementSource));
     glUseProgram(shader);
 
     /*  Loop until user clones the window   */
@@ -207,7 +225,26 @@ int main(void)
         /*   Render here   */
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        /*===================== ERROR Handling Start =====================*/
+        /*  To Find Error    */
+        // GLClearError();
+        // // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        // glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr);
+        // GLCheckError();
+
+        /*  To Find Error with Assert   */
+        // GLClearError();
+        // // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        // glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr);
+        // ASSERT(GLLogCall());
+
+        /*  To Find Error with Assert Call */
+        // GLCall(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
+
+        /*  To Find Error with Assert with Parameter   */
+        GLCallPara(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
+
+        /*====================== ERROR Handling End =====================*/
 
         /*   Swap front and back buffer    */
         glfwSwapBuffers(window);
@@ -215,9 +252,6 @@ int main(void)
         /*   Pull for and process events    */
         glfwPollEvents();
     }
-
-    /*------------ Example 2 By Efficient Vertices End ------------*/
-
 
     glDeleteProgram(shader);
 
