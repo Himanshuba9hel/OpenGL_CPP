@@ -1,0 +1,264 @@
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+/*===================== ERROR Handling Start =====================*/
+
+// #define ASSERT(x) if (!(x)) __debugbreak(); // For Microsoft's Visual C++ (MSVC) compiler
+
+// #define ASSERT(x) if (!(x)) __builtin_trap(); // For GCC/Clang Built-in
+
+/*------------ To Find Error with Assert -------------*/
+#include <csignal>
+#define ASSERT(x) if (!(x)) raise(SIGTRAP);  // For POSIX Standard (Most Portable)
+
+// Without Parameter
+#define GLCall(x) GLClearError();\
+x;\
+    ASSERT(GLLogCall())
+
+// With Parameter
+#define GLCallPara(x) GLClearError();\
+    x;\
+    ASSERT(GLLogCall(#x, __FILE__, __LINE__))
+
+    static bool GLLogCall(const char* function, const char* file, int line)
+{
+    while (GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << "): "<< function <<
+            " " << file << ":" << line << std::endl;
+        return false;
+    }
+    return true;
+}
+
+/*------------ To Find Error with Assert Call Start -------------*/
+
+static bool GLLogCall()
+{
+    while (GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+/*------------- To Find Error with Assert Call End --------------*/
+
+/*--------------------- To Find Error Start ---------------------*/
+static void GLClearError()
+{
+    while (glGetError() != GL_NO_ERROR);
+}
+
+static void GLCheckError()
+{
+    while (GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
+    }
+}
+/*---------------------- To Find Error End ----------------------*/
+
+/*====================== ERROR Handling End =====================*/
+
+struct ShaderProgramSource
+{
+    std::string VertexSourse;
+    std::string FragementSource;
+};
+
+static ShaderProgramSource ParseShader(const std::string& filepath)
+{
+    std::ifstream stream(filepath);
+
+    // Add this check!
+    if (!stream.is_open())
+    {
+        std::cout << "ERROR: Failed to open shader file at: " << filepath << std::endl;
+        // Return empty strings safely or handle the error
+    }
+
+    enum class ShaderType
+    {
+        NONE = -1, VERTEX = 0, FRAGMENT = 1
+    };
+
+    std::string line;
+    std::stringstream ss[2];
+    ShaderType type = ShaderType::NONE;
+
+    while(getline(stream, line))
+    {
+        // Changed nops to npos here
+        if(line.find("#shader") != std::string::npos){
+            // Changed nops to npos here
+            if(line.find("vertex") != std::string::npos)
+                // set mode for vertex
+                type = ShaderType::VERTEX;
+            // Changed nops to npos here
+            else if(line.find("fragment") != std::string::npos)
+                // set mode for fragment
+                type = ShaderType::FRAGMENT;
+        }else{
+            ss[(int)type] << line << '\n';
+        }
+    }
+    return {ss[0].str(),ss[1].str()};
+}
+
+static unsigned int CompileShader(
+    unsigned int type,
+    const std::string& source)
+{
+    unsigned int id = glCreateShader(type);
+    const char* src = source.c_str();
+    glShaderSource(id, 1, &src, nullptr);
+    glCompileShader(id);
+
+    // TODO: Error Handling
+    int result;
+    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+    if(result == GL_FALSE){
+        int length;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+        char* message = (char*) alloca (length * sizeof(char));
+        glGetShaderInfoLog(id, length, &length, message);
+        std::cout << "Failed to compile " <<
+            (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << std::endl;
+        std::cout << message << std::endl;
+        glDeleteShader(id);
+        return 0;
+    }
+    return id;
+}
+
+static int CreateShader(
+    const std::string& vertexShader,
+    const std::string& fragmentShader)
+{
+    unsigned int program = glCreateProgram();
+    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
+    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+    glValidateProgram(program);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    return program;
+}
+
+int main(void)
+{
+    GLFWwindow* window;
+
+    if (!glfwInit())
+        return -1;
+
+    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+
+    if (!window)
+    {
+        glfwTerminate();
+        return -1;
+    }
+
+    // Create OpenGL context FIRST
+    glfwMakeContextCurrent(window);
+
+    /* For Directly  Change the interval of frames */
+    glfwSwapInterval(7);
+
+    // Required for modern OpenGL
+    glewExperimental = GL_TRUE;
+
+    // THEN initialize GLEW
+    if (glewInit() != GLEW_OK)
+    {
+        std::cout << "GLEW Error!" << std::endl;
+        return -1;
+    }
+
+    std::cout << glGetString(GL_VERSION) << std::endl;
+
+    float positions[] = {
+        -0.5f, -0.5f, // 0
+        0.5f, -0.5f, // 1
+        0.5f,  0.5f, // 2
+        -0.5f,  0.5f, // 3
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0,
+    };
+
+    unsigned int buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, 6*2 * sizeof(float), positions, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float)*2, 0);
+
+    unsigned int ibo; // index buffer object
+    glGenBuffers(1, &ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+
+    ShaderProgramSource source = ParseShader("../../../10_Uniforms/res/shaders/Basic.shader");
+    unsigned int shader = CreateShader(source.VertexSourse,source.FragementSource);
+    glUseProgram(shader);
+
+    /*  Assigning variable in shader    */
+    GLCallPara(int location = glGetUniformLocation(shader,"u_Color"));
+    ASSERT(location != -1);
+    GLCallPara(glUniform4f(location,0.8f, 0.3f, 0.8f, 1.0f));
+
+    float r = 0.0f;
+    float increment = 0.05f;
+    //  Loop until user clones the window
+    while (!glfwWindowShouldClose(window))
+    {
+        //   Render here
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        /* Color at Loop    */
+        GLCallPara(glUniform4f(location,r, 0.3f, 0.8f, 1.0f));
+
+        //  To Find Error with Assert with Parameter
+        GLCallPara(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+
+        /* Dynmaic Color Change Start */
+
+        if( r > 1.0f ){
+            increment = -0.05f;
+        }
+        else if( r < 0.0f ){
+            increment = 0.05f;
+        }
+        r += increment;
+
+        //  Dynmaic Color Change End
+
+        //   Swap front and back buffer
+        glfwSwapBuffers(window);
+
+        //   Pull for and process events
+        glfwPollEvents();
+    }
+
+    glDeleteProgram(shader);
+
+    glfwTerminate();
+    return 0;
+}
